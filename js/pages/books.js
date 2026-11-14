@@ -10,15 +10,34 @@
   var D = PP.Dates;
   var ui = PP.ui;
 
+  // 展示方式只有两档：简洁（默认，可编辑卡片） / 仿真（点卡片翻笔记本，只读）
+  function currentMode() {
+    var settings = PP.data.getSettings();
+    return settings.booksMode === 'fancy' ? 'fancy' : 'simple';
+  }
+
+  function modeSwitchHTML(mode) {
+    function pressed(value) { return mode === value ? ' is-active' : ''; }
+    return '<div class="reading-mode" data-reading-mode role="group" aria-label="读书笔记展示方式">' +
+      '<button class="reading-mode-btn' + pressed('simple') + '" type="button" data-mode="simple" aria-pressed="' + (mode === 'simple') + '">' +
+        ui.icon('list', 13) + '简洁模式' +
+      '</button>' +
+      '<button class="reading-mode-btn' + pressed('fancy') + '" type="button" data-mode="fancy" aria-pressed="' + (mode === 'fancy') + '">' +
+        ui.icon('book', 13) + '仿真模式' +
+      '</button>' +
+    '</div>';
+  }
+
   function render() {
     var books = PP.data.getBooks();
+    var mode = currentMode();
     var attachmentCount = books.reduce(function (total, book) {
       return total + (Array.isArray(book.attachments) ? book.attachments.length : 0);
     }, 0);
 
     var cards = books.map(function (book, index) { return renderCard(book, index); }).join('');
 
-    return '<div class="page-shell library-page books-page">' +
+    return '<div class="page-shell library-page books-page" data-books-page data-books-mode="' + mode + '">' +
       '<header class="page-head">' +
         '<div class="page-head-copy">' +
           '<span class="eyebrow">READING NOTES</span>' +
@@ -31,12 +50,16 @@
           '</div>' +
         '</div>' +
         '<div class="page-head-actions">' +
+          modeSwitchHTML(mode) +
           '<button class="btn btn-primary" type="button" data-add-book>' + ui.icon('plus', 16) + '新增书籍</button>' +
         '</div>' +
       '</header>' +
+      '<p class="reading-mode-hint" data-reading-mode-hint>' +
+        ui.icon('sparkles', 13) + '仿真模式：点任意一张卡片，翻开这本笔记本。翻开的纸页只读，要修改请切回简洁模式。' +
+      '</p>' +
 
       (books.length
-        ? '<div class="library-grid">' + cards + '</div>'
+        ? '<div class="library-grid" data-books-grid>' + cards + '</div>'
         : ui.emptyState('📖', '书架还是空的', '从最近在读的一本书开始，给它在你的日程本里留一个位置。',
             '<button class="btn btn-primary" type="button" data-add-book>' + ui.icon('plus', 15) + '添加第一本书</button>')) +
     '</div>';
@@ -79,7 +102,10 @@
     return '<article class="panel library-card book-card" data-book-card data-book-id="' + U.escapeAttr(book.id) + '">' +
       '<div class="library-card-top">' +
         '<span class="library-index">BOOK ' + U.pad2(index + 1) + '</span>' +
-        '<button class="icon-btn is-small is-danger" type="button" data-book-delete aria-label="删除《' + U.escapeAttr(book.title) + '》" title="删除这本书">' + ui.icon('trash', 14) + '</button>' +
+        '<span class="book-card-tools">' +
+          '<button class="icon-btn is-small book-open-btn" type="button" data-open-notebook aria-label="以仿真模式翻开《' + U.escapeAttr(book.title) + '》" title="翻开这本书">' + ui.icon('book', 14) + '</button>' +
+          '<button class="icon-btn is-small is-danger" type="button" data-book-delete aria-label="删除《' + U.escapeAttr(book.title) + '》" title="删除这本书">' + ui.icon('trash', 14) + '</button>' +
+        '</span>' +
       '</div>' +
       '<label class="sr-only" for="book-title-' + U.escapeAttr(book.id) + '">书名</label>' +
       '<input class="library-title-input" id="book-title-' + U.escapeAttr(book.id) + '" type="text" data-book-field="title" maxlength="80" value="' + U.escapeAttr(book.title) + '" placeholder="书名">' +
@@ -143,7 +169,40 @@
     });
   }
 
+  function openNotebook(bookId) {
+    if (!PP.notebook || typeof PP.notebook.open !== 'function') {
+      ui.toast('翻页动画没有加载成功，刷新页面后重试。', 'warning');
+      return false;
+    }
+    return PP.notebook.open(bookId);
+  }
+
+  function paintMode(root, mode) {
+    var page = root.querySelector('[data-books-page]');
+    if (page) page.setAttribute('data-books-mode', mode);
+    root.querySelectorAll('[data-reading-mode] [data-mode]').forEach(function (button) {
+      var active = button.getAttribute('data-mode') === mode;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  function bindModeSwitch(root) {
+    root.querySelectorAll('[data-reading-mode] [data-mode]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var mode = button.getAttribute('data-mode') === 'fancy' ? 'fancy' : 'simple';
+        if (mode === currentMode()) return;
+        PP.data.saveSettings({ booksMode: mode });
+        paintMode(root, mode);
+        if (mode === 'fancy') ui.toast('仿真模式：点任意一张卡片，翻开这本笔记本。', 'info', 2800);
+        else ui.toast('已回到简洁模式，卡片可以直接编辑。', 'info', 2400);
+      });
+    });
+  }
+
   function mount(root) {
+    bindModeSwitch(root);
+
     root.querySelectorAll('[data-add-book]').forEach(function (button) {
       button.addEventListener('click', openAddModal);
     });
@@ -153,6 +212,21 @@
       var status = card.querySelector('[data-book-save]');
       var book = PP.data.getBooks().filter(function (entry) { return entry.id === id; })[0];
       if (!book) return;
+
+      var openButton = card.querySelector('[data-open-notebook]');
+      if (openButton) {
+        openButton.addEventListener('click', function (event) {
+          event.stopPropagation();
+          openNotebook(id);
+        });
+      }
+
+      // 仿真模式下整张卡片都是“翻开这本书”的入口；输入框、按钮仍然按原逻辑工作
+      card.addEventListener('click', function (event) {
+        if (currentMode() !== 'fancy') return;
+        if (event.target.closest('input, textarea, select, button, a, label, [data-attachments]')) return;
+        openNotebook(id);
+      });
 
       card.querySelectorAll('[data-book-field]').forEach(function (field) {
         ui.bindAutoSave(field, function (value) {

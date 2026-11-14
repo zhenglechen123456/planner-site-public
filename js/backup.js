@@ -9,7 +9,16 @@
   var D = PP.Dates;
   var FORMAT = 'shiguang-planner-backup';
   var VERSION = 1;
-  var DATA_KEYS = ['meta', 'settings', 'days', 'habits', 'habitLogs', 'important', 'books', 'todos', 'tasks', 'writings', 'monthSummaries'];
+  var DATA_KEYS = ['meta', 'settings', 'days', 'habits', 'habitLogs', 'important', 'books', 'todos', 'tasks', 'writings', 'monthSummaries', 'courses', 'slots', 'weeks'];
+  // 对象型键的兜底值（其余键默认是数组）
+  var OBJECT_KEYS = {
+    meta: {}, settings: {}, days: {}, habitLogs: {}, important: {},
+    monthSummaries: {}, slots: {}, weeks: {}
+  };
+
+  function fallbackFor(key) {
+    return OBJECT_KEYS[key] ? clone(OBJECT_KEYS[key]) : [];
+  }
 
   function clone(value) {
     return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -62,7 +71,7 @@
   async function create(includeAttachments) {
     var data = {};
     DATA_KEYS.forEach(function (key) {
-      data[key] = clone(PP.store.read(key, key === 'meta' ? {} : key === 'settings' ? {} : key === 'days' || key === 'habitLogs' || key === 'important' || key === 'monthSummaries' ? {} : []));
+      data[key] = clone(PP.store.read(key, fallbackFor(key)));
     });
 
     var attachmentRecords = [];

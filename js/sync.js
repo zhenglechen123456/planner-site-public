@@ -23,7 +23,8 @@
 
   var SYNC_KEYS = [
     'meta', 'settings', 'days', 'habits', 'habitLogs', 'important',
-    'books', 'todos', 'tasks', 'writings', 'monthSummaries'
+    'books', 'todos', 'tasks', 'writings', 'monthSummaries',
+    'courses', 'slots', 'weeks'
   ];
   var CONFIG_KEY = 'sync';              // shiguang.sync：后端 / 地址 / 版本 / 上次同步
   var TOKEN_KEY = 'ppsync.token';       // 独立命名空间：不参与同步，也不会被“清空数据”误删
@@ -564,6 +565,24 @@
         if (hasText) return true;
       }
     }
+    // 时间轴格子指派 / 每周小结也算「真的内容」
+    var slots = payload.slots;
+    if (slots && typeof slots === 'object') {
+      var slotDates = Object.keys(slots);
+      for (var s = 0; s < slotDates.length; s += 1) {
+        var slotDay = slots[slotDates[s]];
+        if (slotDay && typeof slotDay === 'object' && Object.keys(slotDay).length) return true;
+      }
+    }
+    var weeks = payload.weeks;
+    if (weeks && typeof weeks === 'object') {
+      var weekKeys = Object.keys(weeks);
+      for (var w = 0; w < weekKeys.length; w += 1) {
+        var weekEntry = weeks[weekKeys[w]];
+        if (weekEntry && typeof weekEntry === 'object' && weekEntry.summary) return true;
+        if (typeof weekEntry === 'string' && weekEntry) return true;
+      }
+    }
     return false;
   }
 
@@ -716,6 +735,55 @@
     return out;
   }
 
+  // 时间轴指派：日期 → 格子 → 待办 id 列表，三层都做并集（同一格两边各有任务时都保留）
+  function mergeSlotMap(remote, local) {
+    var out = {};
+    var dates = {};
+    Object.keys(remote || {}).forEach(function (date) { dates[date] = true; });
+    Object.keys(local || {}).forEach(function (date) { dates[date] = true; });
+    Object.keys(dates).sort().forEach(function (date) {
+      var remoteDay = (remote && remote[date]) || {};
+      var localDay = (local && local[date]) || {};
+      if (!remoteDay || typeof remoteDay !== 'object') remoteDay = {};
+      if (!localDay || typeof localDay !== 'object') localDay = {};
+      var times = {};
+      Object.keys(remoteDay).forEach(function (time) { times[time] = true; });
+      Object.keys(localDay).forEach(function (time) { times[time] = true; });
+      var day = {};
+      Object.keys(times).sort().forEach(function (time) {
+        var ids = [];
+        var seen = Object.create(null);
+        asArray(remoteDay[time]).concat(asArray(localDay[time])).forEach(function (id) {
+          var key = String(id);
+          if (!key || seen[key]) return;
+          seen[key] = true;
+          ids.push(key);
+        });
+        if (ids.length) day[time] = ids;
+      });
+      if (Object.keys(day).length) out[date] = day;
+    });
+    return out;
+  }
+
+  // 每周小结：按 updatedAt 取新的那条
+  function mergeWeekMap(remote, local) {
+    var out = {};
+    var keys = {};
+    Object.keys(remote || {}).forEach(function (key) { keys[key] = true; });
+    Object.keys(local || {}).forEach(function (key) { keys[key] = true; });
+    Object.keys(keys).sort().forEach(function (key) {
+      var r = remote ? remote[key] : undefined;
+      var l = local ? local[key] : undefined;
+      if (r === undefined) { out[key] = l; return; }
+      if (l === undefined) { out[key] = r; return; }
+      var rAt = r && typeof r === 'object' ? String(r.updatedAt || '') : '';
+      var lAt = l && typeof l === 'object' ? String(l.updatedAt || '') : '';
+      out[key] = lAt >= rAt ? l : r;
+    });
+    return out;
+  }
+
   function mergePayloads(remote, local) {
     var out = {};
     SYNC_KEYS.forEach(function (key) {
@@ -732,6 +800,8 @@
       if (key === 'settings') { out[key] = l; return; }        // 主题 / 上次日期以本机为准
       if (key === 'meta') { out[key] = r; return; }            // 元信息以服务器为准
       if (key === 'days') { out[key] = mergeMap(r, l, mergeDay); return; }
+      if (key === 'slots') { out[key] = mergeSlotMap(r, l); return; }
+      if (key === 'weeks') { out[key] = mergeWeekMap(r, l); return; }
       if (Array.isArray(r) && Array.isArray(l)) { out[key] = mergeList(r, l); return; }
       if (r && typeof r === 'object' && l && typeof l === 'object') {
         out[key] = mergeObject(r, l);
@@ -795,6 +865,10 @@
     if (Array.isArray(out.habits) && out.habitLogs && typeof out.habitLogs === 'object') {
       out.habitLogs = pruneHabitLogs(out.habits, out.habitLogs);
     }
+
+    // 顺带把历史脏数据（同一格重复的待办 id）收敛一次
+    if (out.slots && typeof out.slots === 'object') out.slots = mergeSlotMap(out.slots, {});
+    if (out.weeks && typeof out.weeks === 'object') out.weeks = mergeWeekMap(out.weeks, {});
     return out;
   }
 
@@ -1515,8 +1589,10 @@
         '<button class="btn btn-danger" type="button" data-sync-force>把本机数据覆盖到服务器</button>' +
       '</div>' +
       '<p class="sync-panel-note">' + U.escapeHTML(
-        '同步只涉及结构化数据（每日、习惯、待办、读书、写作、长期任务等）。' +
-        '图片 / PDF / Word 附件仍保存在这台设备上，不会上传。'
+        currentProvider().name === 'github'
+          ? '同步包含结构化数据（每日、习惯、待办、读书、写作、长期任务等）与附件：图片 / PDF / Word 会先加密、再按内容哈希上传到仓库，其他设备在预览时按需下载。'
+          : '同步只涉及结构化数据（每日、习惯、待办、读书、写作、长期任务等）。' +
+            '用自建服务端时，图片 / PDF / Word 附件仍只保存在本机，不会上传。'
       ) + '</p>' +
     '</div>';
   }

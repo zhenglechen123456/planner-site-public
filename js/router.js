@@ -14,6 +14,7 @@
     month: '月份',
     'month-summary': '月份总结',
     day: '每日',
+    week: '每周',
     moods: '心情一览',
     books: '读书笔记',
     todos: '待办',
@@ -28,6 +29,7 @@
     month: 'month',
     'month-summary': 'month',
     day: 'day',
+    week: 'week',
     moods: 'day',
     books: 'books',
     todos: 'todos',
@@ -65,6 +67,16 @@
     if (name === 'day') {
       return { name: 'day', date: D.safeDate(parts[1]), path: raw };
     }
+    if (name === 'week') {
+      // week / week/<YYYY-MM-DD> / week/<YYYY-MM-DD>/<courseId>
+      var weekDate = parts[1] && D.parseISO(parts[1]) ? D.safeDate(parts[1]) : D.safeDate(D.today());
+      return {
+        name: 'week',
+        date: weekDate,
+        courseId: parts[2] ? decodePart(parts[2]) : '',
+        path: raw
+      };
+    }
     if (name === 'moods') {
       return { name: 'moods', ym: D.safeMonth(parts[1]), path: raw };
     }
@@ -94,6 +106,10 @@
     if (route.name === 'month') return D.monthTitle(route.ym) + ' · 月份';
     if (route.name === 'month-summary') return D.monthTitle(route.ym) + ' · 月总结';
     if (route.name === 'day') return D.fullDateCN(route.date) + ' · 每日';
+    if (route.name === 'week') {
+      var weekStart = D.weekStart(route.date);
+      return D.shortDateCN(weekStart) + ' – ' + D.shortDateCN(D.addDays(weekStart, 6)) + ' · 每周';
+    }
     if (route.name === 'moods') return D.monthTitle(route.ym) + ' · 心情一览';
     return PAGE_TITLE[route.name] || '拾光日程';
   }

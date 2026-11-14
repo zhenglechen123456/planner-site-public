@@ -26,6 +26,17 @@
       PP.ui.toast('示例数据没有完全写入，但不影响继续使用。', 'warning');
     }
 
+    // 内置课表：只在第一次运行时播种一次，用户之后改了不会被覆盖
+    try {
+      if (PP.courseData && typeof PP.courseData.installIfNeeded === 'function') {
+        if (PP.courseData.installIfNeeded()) {
+          console.info('[拾光] 已写入内置课表。');
+        }
+      }
+    } catch (error) {
+      console.error('[拾光] 课表初始化失败：', error);
+    }
+
     if (!PP.store.available) {
       PP.ui.toast('浏览器禁用了本地存储，关闭页面后内容可能丢失。', 'warning', 6500);
     }

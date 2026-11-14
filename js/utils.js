@@ -385,6 +385,27 @@
       var date = PP.Dates.parseISO(iso);
       if (!date) return 1;
       return Math.ceil((date.getDate() + PP.Dates.weekdayIndexMonday(PP.Dates.toISO(new Date(date.getFullYear(), date.getMonth(), 1))) ) / 7);
+    },
+
+    // 所在周的周一（周一为首日）
+    weekStart: function (iso) {
+      var date = PP.Dates.parseISO(iso);
+      if (!date) return PP.Dates.safeDate(iso);
+      return PP.Dates.addDays(PP.Dates.toISO(date), -PP.Dates.weekdayIndexMonday(PP.Dates.toISO(date)));
+    },
+
+    // ISO 周编号：'2026-W45'（周一为首日，周四所在年即 ISO 年）
+    isoWeekKey: function (iso) {
+      var date = PP.Dates.parseISO(iso);
+      if (!date) return '';
+      var target = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+      var weekday = (target.getDay() + 6) % 7;         // 周一 = 0
+      target.setDate(target.getDate() - weekday + 3);   // 挪到本周周四
+      var firstThursday = new Date(target.getFullYear(), 0, 4, 12, 0, 0, 0);
+      var firstWeekday = (firstThursday.getDay() + 6) % 7;
+      firstThursday.setDate(firstThursday.getDate() - firstWeekday + 3);
+      var week = 1 + Math.round((target.getTime() - firstThursday.getTime()) / 604800000);
+      return target.getFullYear() + '-W' + (week < 10 ? '0' + week : String(week));
     }
   };
 }());

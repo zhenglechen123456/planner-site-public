@@ -22,7 +22,10 @@
     todos: 'todos',
     tasks: 'tasks',
     writings: 'writings',
-    months: 'monthSummaries'
+    months: 'monthSummaries',
+    courses: 'courses',   // 内置课表（首次运行播种一次）
+    slots: 'slots',       // 时间轴格子指派：{ 'YYYY-MM-DD': { 'HH:MM': ['todo-id'] } }
+    weeks: 'weeks'        // 每周小结：{ '2026-W45': { summary, updatedAt } }
   };
 
   var U = PP.Util;
@@ -197,7 +200,9 @@
     return {
       theme: settings.theme === 'blue' ? 'blue' : 'purple',
       mode: settings.mode === 'dark' ? 'dark' : 'light',
-      lastDate: D.safeDate(settings.lastDate || D.defaultDate())
+      lastDate: D.safeDate(settings.lastDate || D.defaultDate()),
+      // 读书笔记展示方式：默认简洁模式，老用户不受影响
+      booksMode: settings.booksMode === 'fancy' ? 'fancy' : 'simple'
     };
   }
 
@@ -233,6 +238,7 @@
       next.theme = next.theme === 'blue' ? 'blue' : 'purple';
       next.mode = next.mode === 'dark' ? 'dark' : 'light';
       next.lastDate = D.safeDate(next.lastDate || D.defaultDate());
+      next.booksMode = next.booksMode === 'fancy' ? 'fancy' : 'simple';
       PP.store.write(K.settings, next);
       return next;
     },
@@ -295,6 +301,11 @@
         day.todos = day.todos.filter(function (todo) { return todo.id !== id; });
         return day;
       });
+    },
+
+    // 时间轴工具栏用的别名：当天待办（未完成在前）
+    getDayTodos: function (iso) {
+      return data.getSortedDayTodos(iso);
     },
 
     getSortedDayTodos: function (iso) {
@@ -845,6 +856,32 @@
       summaries[ym] = { text: String(text || ''), updatedAt: D.nowISO(), sample: false };
       PP.store.write(K.months, summaries);
       return summaries[ym];
+    },
+
+    /* ------------------------------ 每周小结 ------------------------------ */
+
+    // 结构：{ '2026-W45': { summary: '', updatedAt: '' } }
+    getWeekSummaries: function () {
+      var weeks = PP.store.read(K.weeks, {});
+      return weeks && typeof weeks === 'object' && !Array.isArray(weeks) ? weeks : {};
+    },
+
+    getWeekSummary: function (weekKey) {
+      var item = data.getWeekSummaries()[String(weekKey || '')];
+      if (typeof item === 'string') return { summary: item, updatedAt: '' };
+      return {
+        summary: item && typeof item.summary === 'string' ? item.summary : '',
+        updatedAt: (item && item.updatedAt) || ''
+      };
+    },
+
+    setWeekSummary: function (weekKey, text) {
+      var key = String(weekKey || '');
+      if (!key) return null;
+      var weeks = data.getWeekSummaries();
+      weeks[key] = { summary: String(text || ''), updatedAt: D.nowISO() };
+      PP.store.write(K.weeks, weeks);
+      return weeks[key];
     },
 
     /* ------------------------------ 统计 ------------------------------ */

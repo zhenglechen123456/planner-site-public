@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/extensions.css">
+  <link rel="stylesheet" href="css/notebook.css">
+  <link rel="stylesheet" href="css/schedule.css">
   <link rel="stylesheet" href="css/tasks.css">
   <link rel="stylesheet" href="css/sync.css">
 </head>
@@ -39,6 +41,7 @@
         <a class="nav-link" data-nav="year" href="#/year">年份</a>
         <a class="nav-link" data-nav="month" href="#/month">月份</a>
         <a class="nav-link" data-nav="day" href="#/day">每日</a>
+        <a class="nav-link" data-nav="week" href="#/week">每周</a>
         <a class="nav-link" data-nav="books" href="#/books">读书笔记</a>
         <a class="nav-link" data-nav="todos" href="#/todos">待办</a>
         <a class="nav-link" data-nav="tasks" href="#/tasks">长期任务</a>
@@ -83,10 +86,11 @@
         <a data-nav="year" href="#/year"><span>01</span>年份</a>
         <a data-nav="month" href="#/month"><span>02</span>月份</a>
         <a data-nav="day" href="#/day"><span>03</span>每日</a>
-        <a data-nav="books" href="#/books"><span>04</span>读书笔记</a>
-        <a data-nav="todos" href="#/todos"><span>05</span>待办</a>
-        <a data-nav="tasks" href="#/tasks"><span>06</span>长期任务</a>
-        <a data-nav="writing" href="#/writing"><span>07</span>写作</a>
+        <a data-nav="week" href="#/week"><span>04</span>每周</a>
+        <a data-nav="books" href="#/books"><span>05</span>读书笔记</a>
+        <a data-nav="todos" href="#/todos"><span>06</span>待办</a>
+        <a data-nav="tasks" href="#/tasks"><span>07</span>长期任务</a>
+        <a data-nav="writing" href="#/writing"><span>08</span>写作</a>
       </nav>
       <button class="mobile-sync" type="button" data-sync-status data-state="idle" aria-label="同步状态：未登录" title="同步状态：未登录">
         <span class="sync-dot" aria-hidden="true"></span>
@@ -117,6 +121,7 @@
   <script src="js/solar.js" defer></script>
   <script src="js/store.js" defer></script>
   <script src="js/data.js" defer></script>
+  <script src="js/courses-data.js" defer></script>
   <script src="js/tasks-data.js" defer></script>
   <script src="js/ui.js" defer></script>
   <script src="js/gate.js" defer></script>
@@ -130,8 +135,10 @@
   <script src="js/pages/month.js" defer></script>
   <script src="js/pages/month-summary.js" defer></script>
   <script src="js/pages/day.js" defer></script>
+  <script src="js/pages/week.js" defer></script>
   <script src="js/pages/mood.js" defer></script>
   <script src="js/pages/books.js" defer></script>
+  <script src="js/notebook.js" defer></script>
   <script src="js/pages/todos.js" defer></script>
   <script src="js/pages/tasks.js" defer></script>
   <script src="js/pages/task.js" defer></script>

@@ -181,6 +181,9 @@
             '</form>' +
             '<div class="timeline-list" data-timeline-list>' + renderTimelineList(day.timeline) + '</div>' +
           '</section>' +
+
+          renderDayCourses(date) +
+          renderSlotPanel(date) +
         '</div>' +
 
         '<aside class="day-aside">' +
@@ -301,6 +304,292 @@
         '</div>' +
       '</div>';
     }).join('') + '</div>';
+  }
+
+  /* ------------------------- 今日课程（课表卡片） ------------------------- */
+
+  function courseShortName(name, length) {
+    var value = String(name || '');
+    if (value.length <= length + 1) return value;
+    return value.slice(0, length) + '…';
+  }
+
+  function renderDayCourses(date) {
+    var info = PP.courseData.termInfo(date);
+    var list = PP.courseData.coursesOn(date);
+    var weekday = D.weekday(date);
+    var countText = list.length ? ' · 共 ' + list.length + ' 节' : '';
+    var head = '<div class="section-head">' +
+        '<div><span class="section-kicker">TODAY’S CLASSES</span>' +
+          '<h2>' + ui.icon('calendar', 17) + '今日课程' +
+            (list.length ? ' <span class="badge" data-day-courses-count>' + list.length + '</span>' : '') +
+          '</h2></div>' +
+        '<span class="tiny muted">' + weekday + countText + '</span>' +
+      '</div>';
+
+    if (!list.length) {
+      var hint = info.inTerm
+        ? '今天没有课'
+        : '假期 / 学期外 · 第 1 周从 ' + D.shortDateCN(PP.courseData.TERM_START) + '（' + PP.Dates.weekday(PP.courseData.TERM_START) + '）开始';
+      return '<section class="day-courses-plain" data-day-courses>' + head +
+        '<p class="day-courses-empty" data-day-courses-empty>' + ui.icon('info', 13) + '<span>' + U.escapeHTML(hint) + '</span></p>' +
+        '</section>';
+    }
+
+    var items = list.map(function (course) {
+      return '<a class="course-item" data-course-item data-course-name="' + U.escapeAttr(course.name) + '" data-course-id="' + U.escapeAttr(course.id) + '"' +
+          ' href="#/week/' + date + '/' + encodeURIComponent(course.id) + '"' +
+          ' style="--course:' + course.color + '"' +
+          ' title="' + U.escapeAttr(course.name + ' · ' + course.place + ' · ' + course.teacher) + '">' +
+          '<span class="course-time">' + course.start + '–' + course.end + '</span>' +
+          '<span class="course-body">' +
+            '<strong>' + U.escapeHTML(course.name) + '</strong>' +
+            '<em>' + U.escapeHTML(course.place) + (course.teacher ? ' · ' + U.escapeHTML(course.teacher) : '') + '</em>' +
+          '</span>' +
+          '<span class="course-go" aria-hidden="true">' + ui.icon('chevronRight', 14) + '</span>' +
+        '</a>';
+    }).join('');
+
+    return '<section class="panel day-courses-panel" data-day-courses>' + head +
+      '<div class="course-list">' + items + '</div>' +
+      '<p class="tiny muted course-foot">点击任意一节课可以跳到「每周」并定位到它。</p>' +
+      '</section>';
+  }
+
+  /* --------------------------- 48 格半小时时间轴 --------------------------- */
+
+  var SLOT_LABEL_COURSE = 5;
+  var SLOT_LABEL_TODO = 7;
+
+  // 连续段落判定：同一门课（或同一条待办）占住相邻半小时格时，
+  // 只有段落的第一格写字，后面的格子只留底色 / 左侧强调线。
+  // 数组本身就是 04:00 → 次日 04:00 的顺序，所以「左列 15:30 → 右列 16:00」天然相邻。
+  function continuesPrevious(cells, index) {
+    if (index <= 0) return false;
+    var cell = cells[index];
+    var prev = cells[index - 1];
+    if (!cell || !prev) return false;
+    if (cell.kind === 'course' && prev.kind === 'course') {
+      return !!(cell.course && prev.course && cell.course.id === prev.course.id);
+    }
+    if (cell.kind === 'todo' && prev.kind === 'todo') {
+      if (!cell.todos.length || !prev.todos.length) return false;
+      return cell.todos[0].id === prev.todos[0].id;
+    }
+    return false;
+  }
+
+  function slotLabel(cell) {
+    var plus = '';
+    if (cell.course && cell.todos.length) plus = '<i class="slot-plus">+' + cell.todos.length + '</i>';
+    if (cell.course) {
+      return '<span class="slot-label-text">' + U.escapeHTML(courseShortName(cell.course.name, SLOT_LABEL_COURSE)) + '</span>' + plus;
+    }
+    if (cell.todos.length) {
+      var first = cell.todos[0];
+      var extra = cell.todos.length > 1 ? '<i class="slot-plus">+' + (cell.todos.length - 1) + '</i>' : '';
+      return '<span class="slot-label-text">' + U.escapeHTML(courseShortName(first.text, SLOT_LABEL_TODO)) + '</span>' + extra;
+    }
+    return '';
+  }
+
+  function slotTitle(cell) {
+    var parts = [PP.courseData.slotRange(cell.time)];
+    if (cell.course) {
+      parts.push(cell.course.name);
+      if (cell.course.place) parts.push(cell.course.place);
+      if (cell.course.teacher) parts.push(cell.course.teacher);
+    }
+    if (cell.todos.length) {
+      parts.push('任务：' + cell.todos.map(function (todo) { return todo.text; }).join(' / '));
+    }
+    if (!cell.course && !cell.todos.length) parts.push('空闲（点击选中）');
+    return parts.join(' · ');
+  }
+
+  function renderSlotCell(date, cell, selected, continued) {
+    var isSelected = !!selected[cell.time];
+    var hasTodo = !!(cell.course && cell.todos.length);
+    var color = cell.course ? cell.course.color : (cell.todos.length ? cell.todos[0].color : '');
+    var classes = ['slot-cell', 'is-' + cell.kind];
+    if (cell.isHour) classes.push('is-hour');
+    if (cell.isNextDay) classes.push('is-next-day');
+    if (isSelected) classes.push('is-selected');
+    if (continued) classes.push('is-continue');
+    // 课程格里叠了任务：不写字，但用待办色的左侧强调线留一个可见记号
+    if (hasTodo) classes.push('has-todo');
+
+    var styleParts = [];
+    if (color) styleParts.push('--slot-color:' + color);
+    if (hasTodo) styleParts.push('--todo-color:' + cell.todos[0].color);
+    var styleAttr = styleParts.length ? ' style="' + styleParts.join(';') + '"' : '';
+
+    return '<button type="button" class="' + classes.join(' ') + '"' +
+      ' data-slot data-date="' + date + '" data-time="' + cell.time + '" data-kind="' + cell.kind + '"' +
+      (isSelected ? ' data-slot-selected="1"' : '') +
+      ' aria-pressed="' + (isSelected ? 'true' : 'false') + '"' +
+      styleAttr +
+      ' title="' + U.escapeAttr(slotTitle(cell)) + '">' +
+      '<span class="slot-time">' + (cell.isHour ? cell.time : '') + '</span>' +
+      '<span class="slot-body">' + (continued ? '' : slotLabel(cell)) + '</span>' +
+      '</button>';
+  }
+
+  function renderSlotColumns(date, cells, selected) {
+    var parts = cells.map(function (cell, index) {
+      return renderSlotCell(date, cell, selected, continuesPrevious(cells, index));
+    });
+    return '<div class="slot-column" data-slot-column="0">' + parts.slice(0, 24).join('') + '</div>' +
+      '<div class="slot-column" data-slot-column="1">' + parts.slice(24).join('') + '</div>';
+  }
+
+  function slotTodoItems(date, scope) {
+    if (scope === 'day') {
+      return PP.data.getDayTodos(date).map(function (todo) {
+        return { id: todo.id, text: todo.text, done: !!todo.done, kind: 'day' };
+      });
+    }
+    return PP.data.getSortedTodos().map(function (todo) {
+      return { id: todo.id, text: todo.text, done: !!todo.done, kind: 'deadline', due: todo.due };
+    });
+  }
+
+  function renderSlotTodoList(items) {
+    if (!items.length) {
+      return '<p class="tiny muted slot-list-empty">这里还没有待办</p>';
+    }
+    return items.map(function (item) {
+      return '<button class="slot-todo' + (item.done ? ' is-done' : '') + '" type="button" data-slot-todo' +
+        ' data-todo-id="' + U.escapeAttr(item.id) + '" data-todo-scope="' + item.kind + '"' +
+        ' style="--slot-color:' + PP.courseData.colorOfTodo(item.id) + '"' +
+        ' title="' + U.escapeAttr('指派给：' + item.text) + '">' +
+        '<i class="slot-todo-dot" aria-hidden="true"></i>' +
+        '<span class="slot-todo-text">' + U.escapeHTML(item.text) + '</span>' +
+        '<em class="slot-todo-state">' + (item.done ? '已完成' : '待完成') + '</em>' +
+        '</button>';
+    }).join('');
+  }
+
+  function renderSlotToolbar(date) {
+    return '<div class="slot-toolbar-head">' +
+        '<strong data-slot-picked>已选 0 格</strong>' +
+        '<span class="tiny muted">点下面的待办，把选中的格子全部指派给它</span>' +
+      '</div>' +
+      '<div class="slot-lists">' +
+        '<div class="slot-list-block">' +
+          '<h4>当天待办</h4>' +
+          '<div class="slot-todo-list" data-slot-list="day">' + renderSlotTodoList(slotTodoItems(date, 'day')) + '</div>' +
+        '</div>' +
+        '<div class="slot-list-block">' +
+          '<h4>全部待办</h4>' +
+          '<div class="slot-todo-list" data-slot-list="all">' + renderSlotTodoList(slotTodoItems(date, 'all')) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="slot-toolbar-actions">' +
+        '<button class="btn btn-sm" type="button" data-slot-clear>' + ui.icon('trash', 13) + '清除这些格子的指派</button>' +
+        '<button class="btn btn-sm btn-ghost" type="button" data-slot-cancel>取消选择</button>' +
+      '</div>';
+  }
+
+  function renderSlotPanel(date) {
+    var cells = PP.courseData.timelineFor(date);
+    var info = cells.length ? cells[0].termInfo : PP.courseData.termInfo(date);
+    var courseCount = cells.filter(function (cell) { return cell.kind === 'course'; }).length;
+    var todoCount = cells.filter(function (cell) { return cell.kind === 'todo'; }).length;
+    var termChip = info.inTerm
+      ? '<span class="slot-legend-term">学期第 ' + info.week + ' 周</span>'
+      : '<span class="slot-legend-term is-off">' + U.escapeHTML(info.label) + '</span>';
+
+    return '<section class="panel slot-panel" data-slot-grid>' +
+      '<div class="section-head">' +
+        '<div><span class="section-kicker">HALF-HOUR GRID</span>' +
+          '<h2>' + ui.icon('clock', 17) + '半小时时间轴 <span class="badge">48 格</span></h2></div>' +
+        '<span class="tiny muted">04:00 → 次日 04:00 · 左右两列各 24 格</span>' +
+      '</div>' +
+      '<div class="slot-legend">' +
+        '<span class="slot-legend-item is-course"><i aria-hidden="true"></i>课程 ' + courseCount + ' 格</span>' +
+        '<span class="slot-legend-item is-todo"><i aria-hidden="true"></i>任务 ' + todoCount + ' 格</span>' +
+        '<span class="slot-legend-item is-empty"><i aria-hidden="true"></i>空闲</span>' +
+        termChip +
+      '</div>' +
+      '<div class="slot-axis" data-slot-axis>' + renderSlotColumns(date, cells, {}) + '</div>' +
+      '<div class="slot-toolbar" data-slot-toolbar hidden>' + renderSlotToolbar(date) + '</div>' +
+      '</section>';
+  }
+
+  function mountSlotPanel(root, date) {
+    var axis = root.querySelector('[data-slot-axis]');
+    if (!axis) return;
+    var toolbar = root.querySelector('[data-slot-toolbar]');
+    var picked = root.querySelector('[data-slot-picked]');
+    var dayList = root.querySelector('[data-slot-list="day"]');
+    var allList = root.querySelector('[data-slot-list="all"]');
+    var selected = Object.create(null);
+
+    function selectedTimes() {
+      return Object.keys(selected).sort();
+    }
+
+    function refreshLists() {
+      if (dayList) dayList.innerHTML = renderSlotTodoList(slotTodoItems(date, 'day'));
+      if (allList) allList.innerHTML = renderSlotTodoList(slotTodoItems(date, 'all'));
+    }
+
+    function paint() {
+      var cells = PP.courseData.timelineFor(date);
+      axis.innerHTML = renderSlotColumns(date, cells, selected);
+      var count = selectedTimes().length;
+      if (picked) picked.textContent = '已选 ' + count + ' 格';
+      if (toolbar) toolbar.hidden = count === 0;
+      if (count) refreshLists();
+    }
+
+    function reset() {
+      Object.keys(selected).forEach(function (time) { delete selected[time]; });
+    }
+
+    axis.addEventListener('click', function (event) {
+      var cell = event.target.closest('[data-slot]');
+      if (!cell || !axis.contains(cell)) return;
+      var time = cell.getAttribute('data-time');
+      if (!time) return;
+      if (selected[time]) delete selected[time];
+      else selected[time] = true;
+      paint();
+    });
+
+    if (!toolbar) return;
+    toolbar.addEventListener('click', function (event) {
+      var times = selectedTimes();
+      var todoButton = event.target.closest('[data-slot-todo]');
+      if (todoButton) {
+        if (!times.length) {
+          ui.toast('先点几个格子，再选择待办。', 'warning');
+          return;
+        }
+        var todoId = todoButton.getAttribute('data-todo-id');
+        var textNode = todoButton.querySelector('.slot-todo-text');
+        var label = textNode ? textNode.textContent : '这条待办';
+        var changed = PP.courseData.assignSlotTodos(date, times, todoId);
+        reset();
+        paint();
+        if (changed) ui.toast('已把 ' + changed + ' 个格子指派给「' + U.truncate(label, 14) + '」。', 'success');
+        else ui.toast('这些格子已经指派过这条待办了。', 'warning');
+        return;
+      }
+      if (event.target.closest('[data-slot-clear]')) {
+        if (!times.length) return;
+        var removed = PP.courseData.clearSlots(date, times);
+        reset();
+        paint();
+        ui.toast(removed ? '已清除 ' + removed + ' 个格子上的指派。' : '这些格子本来就没有指派。', removed ? 'success' : 'warning');
+        return;
+      }
+      if (event.target.closest('[data-slot-cancel]')) {
+        reset();
+        paint();
+      }
+    });
   }
 
   function openMoodEditor(date, entry, onDone) {
@@ -677,8 +966,7 @@
       });
     }
 
-    var summary = root.querySelector('[data-day-summary]');
-    var summarySave = root.querySelector('[data-day-save]');
+    var summary = root.querySelector('[data-day-summary]');    var summarySave = root.querySelector('[data-day-save]');
     if (summary) {
       ui.bindAutoSave(summary, function (value) {
         PP.data.updateDay(date, function (day) {
@@ -741,6 +1029,8 @@
         }
       });
     }
+
+    mountSlotPanel(root, date);
   }
 
   PP.pages.day = { render: render, mount: mount };
