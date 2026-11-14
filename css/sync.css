@@ -1,0 +1,621 @@
+/* ==========================================================================
+   多设备同步 + 服务端密码门禁
+   · 颜色全部来自 css/tokens.css（日/夜 × 紫/蓝 四套主题通用）
+   · 不写任何硬编码颜色，不使用纯黑 / 纯白
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. 密码页
+   -------------------------------------------------------------------------- */
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: grid;
+  place-items: center;
+  padding: 26px 18px;
+  overflow-y: auto;
+  background: var(--bg);
+  background-image: var(--hero-wash);
+  animation: gate-fade .22s var(--ease) both;
+}
+
+html[data-gate="open"] body { overflow: hidden; }
+
+/* 门禁打开时不显示导航与页面内容 */
+html[data-gate="open"] .site-header,
+html[data-gate="open"] .site-footer,
+html[data-gate="open"] #view {
+  visibility: hidden;
+}
+
+@keyframes gate-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gate-card {
+  position: relative;
+  width: min(100%, 404px);
+  padding: 30px 26px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: gate-rise .3s var(--ease) both;
+}
+
+@keyframes gate-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gate-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.gate-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-family: var(--font-display);
+  font-size: 21px;
+  line-height: 1;
+}
+
+.gate-wordmark {
+  color: var(--muted-2);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .22em;
+}
+
+.gate-title {
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  line-height: 1.25;
+}
+
+.gate-sub {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+
+.gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 20px;
+}
+
+.gate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gate-label {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.gate-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: .08em;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.gate-input::placeholder {
+  color: var(--muted-2);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.gate-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--surface);
+  box-shadow: var(--focus-ring);
+}
+
+.gate-remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.gate-remember input {
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  flex: none;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.gate-error {
+  min-height: 18px;
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.gate-error.is-visible { opacity: 1; }
+
+.gate-submit {
+  width: 100%;
+  height: 46px;
+  font-size: 14.5px;
+}
+
+.gate-foot {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-2);
+  font-size: 10.5px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+@media (max-width: 420px) {
+  .gate-card { padding: 24px 18px 18px; }
+  .gate-title { font-size: 23px; }
+}
+
+/* --------------------------------------------------------------------------
+   2. 顶部导航里的「同步状态」入口
+   -------------------------------------------------------------------------- */
+
+.sync-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+
+.sync-chip:hover,
+.sync-chip:focus-visible {
+  color: var(--primary-strong);
+  border-color: var(--accent);
+  background: var(--primary-faint);
+}
+
+.sync-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.sync-chip .sync-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted-2);
+  transition: background var(--transition);
+}
+
+/* 状态文案可能较长（例如「本地模式（未连接同步服务）」），窄屏时省略但保留 title */
+.sync-chip .sync-text {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 状态圆点：桌面胶囊与移动端菜单行共用 */
+[data-sync-status][data-state="idle"] .sync-dot { background: var(--success); }
+[data-sync-status][data-state="syncing"] .sync-dot {
+  background: var(--primary);
+  animation: sync-pulse 1.1s ease-in-out infinite;
+}
+[data-sync-status][data-state="offline"] .sync-dot { background: var(--warning); }
+[data-sync-status][data-state="conflict"] .sync-dot { background: var(--danger); }
+[data-sync-status][data-state="local"] .sync-dot { background: var(--muted-2); }
+
+@keyframes sync-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .45; transform: scale(.82); }
+}
+
+@media (max-width: 900px) {
+  .sync-chip .sync-text { display: none; }
+  .sync-chip { padding: 0 9px; }
+}
+
+@media (max-width: 620px) {
+  /* 窄屏顶部放不下「小圆点 + 文字」，改为放进「菜单 → 同步状态」 */
+  .nav-tools { gap: 7px; }
+  .sync-chip { display: none; }
+}
+
+/* 移动端菜单里的同步状态行（≤620px 时顶部胶囊隐藏，这里仍可进入） */
+.mobile-sync {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 8px auto 0;
+  padding: 12px 13px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 13px;
+  background: var(--surface-2);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-sync:hover,
+.mobile-sync:focus-visible {
+  color: var(--primary-strong);
+  border-color: var(--accent);
+  background: var(--primary-faint);
+}
+
+.mobile-sync:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.mobile-sync .sync-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted-2);
+}
+
+.mobile-sync .sync-text { flex: 1; }
+
+.mobile-sync::after {
+  content: "查看";
+  color: var(--muted-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   3. 同步面板（弹窗内）
+   -------------------------------------------------------------------------- */
+
+.sync-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.sync-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.sync-panel-head strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sync-panel-provider {
+  margin-left: auto;
+  max-width: 60%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted-2);
+}
+
+.sync-dot.is-idle { background: var(--success); }
+.sync-dot.is-syncing { background: var(--primary); }
+.sync-dot.is-offline { background: var(--warning); }
+.sync-dot.is-conflict { background: var(--danger); }
+.sync-dot.is-local { background: var(--muted-2); }
+
+.sync-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.sync-facts > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.sync-facts > div:last-child { border-bottom: 0; }
+
+.sync-facts dt {
+  flex: none;
+  width: 76px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.sync-facts dd {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.sync-facts-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sync-input,
+.sync-select {
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+}
+
+.sync-input { flex: 1; }
+
+.sync-input:focus,
+.sync-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+.sync-input[disabled] {
+  color: var(--muted-2);
+  background: var(--surface-2);
+  cursor: not-allowed;
+}
+
+.sync-select { cursor: pointer; }
+
+.sync-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sync-panel-actions .btn { flex: 1 1 auto; }
+
+.sync-panel-note {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.75;
+}
+
+.sync-panel-note code,
+.sync-choice-text code {
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: var(--primary-faint);
+  color: var(--primary-strong);
+  font-size: .95em;
+}
+
+/* 服务器明确拒绝同步时的可读原因（4xx，非 401/409） */
+.sync-panel-error {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.75;
+}
+
+.sync-panel-error[hidden] { display: none; }
+
+/* --------------------------------------------------------------------------
+   4. 冲突 / 首次同步的选择弹窗（单弹窗多阶段，不用嵌套 modal）
+   -------------------------------------------------------------------------- */
+
+.sync-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sync-choice-text {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+
+.sync-choice-text strong { color: var(--text); }
+.sync-choice-text.muted { color: var(--muted); font-size: 11.5px; }
+
+.sync-choice-warn {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.8;
+}
+
+.sync-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.sync-choice-list .btn {
+  width: 100%;
+  height: auto;
+  min-height: 42px;
+  padding: 10px 16px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.sync-choice-btn:only-child { min-height: 44px; }
+
+.sync-choice-list .btn[data-choice-back] { order: 1; }
+.sync-choice-list .btn[data-choice-ok] { order: 2; }
+
+@media (max-width: 480px) {
+  .sync-facts > div { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .sync-facts dt { width: auto; }
+  .sync-facts-field { width: 100%; }
+  .sync-panel-actions .btn { flex: 1 1 100%; }
+}
+
+/* --------------------------------------------------------------------------
+   5. 设置弹窗里的「同步与账号」区块（结构沿用 extensions.css 的 settings-*）
+   -------------------------------------------------------------------------- */
+
+.settings-sync-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: 12px;
+  margin-top: 13px;
+}
+
+.settings-sync-row .field-label { color: var(--muted); }
+
+.settings-sync-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.settings-sync-stats strong { font-size: 13.5px; }
+.settings-sync-stats span { font-size: 8.5px; }
+
+.settings-section .tiny.muted { display: block; margin-top: 10px; }
+
+/* ------------------------------ GitHub 后端字段 ------------------------------ */
+
+.settings-github {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 13px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.settings-github[hidden] { display: none; }
+.settings-github .settings-sync-row { margin-top: 0; }
+
+.settings-advanced {
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+}
+
+.settings-advanced summary {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-advanced summary::-webkit-details-marker { display: none; }
+.settings-advanced summary::before { content: "▸ "; color: var(--primary); }
+.settings-advanced[open] summary::before { content: "▾ "; }
+.settings-advanced .field { margin-top: 9px; }
+
+.gh-result {
+  min-height: 16px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+
+.gh-result.is-ok { color: var(--success); }
+.gh-result.is-error { color: var(--danger); font-weight: 600; }
+.gh-result.is-info { color: var(--primary-strong); }
+
+.settings-github code,
+.settings-section .tiny code {
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: var(--primary-faint);
+  color: var(--primary-strong);
+  font-size: .95em;
+}
+
+@media (max-width: 640px) {
+  .settings-sync-row { grid-template-columns: minmax(0, 1fr); }
+  .settings-sync-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+

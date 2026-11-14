@@ -1,0 +1,203 @@
+/* ==========================================================================
+   拾光日程 · 设计令牌
+   颜色全部使用同色系深色文字，不使用纯黑；夜间模式不使用纯白。
+   ========================================================================== */
+
+:root {
+  --font-ui: "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Songti SC", "Noto Serif SC", Georgia, serif;
+  --font-num: "Iowan Old Style", "Palatino Linotype", "Georgia", "Times New Roman", serif;
+
+  --page-max: 1240px;
+  --header-h: 68px;
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --transition: 180ms var(--ease);
+
+  --mood-happy: #d99b2b;
+  --mood-calm: #4e9d7c;
+  --mood-sad: #5f8fc9;
+  --mood-angry: #c9665a;
+  --mood-anxious: #9470bd;
+  --mood-tired: #8b8698;
+}
+
+/* ---------- 紫色 · 日间 ---------- */
+html[data-theme="purple"] {
+  color-scheme: light;
+  --primary: #6f52a8;
+  --primary-strong: #5b3f92;
+  --primary-deep: #4a3377;
+  --primary-soft: #ebe4f7;
+  --primary-faint: #f5f0fb;
+  --on-primary: #fcf9ff;
+  --accent: #aa8bd8;
+  --accent-soft: #ded1ef;
+  --bg: #f7f4fa;
+  --bg-deep: #f0eaf6;
+  --surface: #fefdff;
+  --surface-2: #f4eef9;
+  --surface-3: #ece3f4;
+  --text: #352e43;
+  --text-soft: #51485f;
+  --muted: #766c84;
+  --muted-2: #7b7285;
+  --border: #e5dcec;
+  --border-strong: #d6c9e2;
+  --shadow-sm: 0 2px 8px rgba(71, 48, 100, .05);
+  --shadow: 0 12px 35px rgba(74, 51, 119, .08);
+  --shadow-lg: 0 26px 70px rgba(55, 36, 88, .16);
+  --danger: #a94f57;
+  --danger-soft: #fae9eb;
+  --success: #437961;
+  --success-soft: #e9f5ee;
+  --warning: #8f6920;
+  --warning-soft: #fbf3df;
+  --header-bg: rgba(250, 247, 253, .88);
+  --hero-wash: radial-gradient(ellipse at 15% 0%, rgba(170, 139, 216, .22), transparent 55%),
+               radial-gradient(ellipse at 90% 10%, rgba(111, 82, 168, .12), transparent 50%);
+  --grid-line: rgba(111, 82, 168, .07);
+  --focus-ring: 0 0 0 4px rgba(111, 82, 168, .16);
+  --selection: #e2d5f3;
+}
+
+/* ---------- 蓝色 · 日间 ---------- */
+html[data-theme="blue"] {
+  color-scheme: light;
+  --primary: #2f6da8;
+  --primary-strong: #245785;
+  --primary-deep: #1c4568;
+  --primary-soft: #e1edf8;
+  --primary-faint: #f0f7fc;
+  --on-primary: #f9fcff;
+  --accent: #79a8d5;
+  --accent-soft: #cfe2f2;
+  --bg: #f3f7fb;
+  --bg-deep: #eaf2f9;
+  --surface: #fdfeff;
+  --surface-2: #edf4fa;
+  --surface-3: #e2edf6;
+  --text: #263847;
+  --text-soft: #3e5365;
+  --muted: #607283;
+  --muted-2: #697883;
+  --border: #dce7f0;
+  --border-strong: #c9dbe8;
+  --shadow-sm: 0 2px 8px rgba(35, 70, 100, .05);
+  --shadow: 0 12px 35px rgba(35, 70, 100, .08);
+  --shadow-lg: 0 26px 70px rgba(25, 55, 82, .16);
+  --danger: #a54d51;
+  --danger-soft: #fae9ea;
+  --success: #3a7a62;
+  --success-soft: #e8f5ef;
+  --warning: #8d691e;
+  --warning-soft: #faf2dd;
+  --header-bg: rgba(247, 251, 254, .9);
+  --hero-wash: radial-gradient(ellipse at 15% 0%, rgba(121, 168, 213, .24), transparent 55%),
+               radial-gradient(ellipse at 90% 10%, rgba(47, 109, 168, .12), transparent 50%);
+  --grid-line: rgba(47, 109, 168, .07);
+  --focus-ring: 0 0 0 4px rgba(47, 109, 168, .16);
+  --selection: #d2e4f3;
+}
+
+/* ---------- 紫色 · 夜间 ---------- */
+html[data-theme="purple"][data-mode="dark"] {
+  color-scheme: dark;
+  --primary: #b9a0e6;
+  --primary-strong: #d4c2f4;
+  --primary-deep: #e4d7fb;
+  --primary-soft: #332846;
+  --primary-faint: #2a2139;
+  --on-primary: #1e1629;
+  --accent: #9579c1;
+  --accent-soft: #403253;
+  --bg: #17131e;
+  --bg-deep: #120f18;
+  --surface: #211a2b;
+  --surface-2: #2a2236;
+  --surface-3: #332942;
+  --text: #e9e2f1;
+  --text-soft: #cec3da;
+  --muted: #a79bb7;
+  --muted-2: #8c8096;
+  --border: #3a3049;
+  --border-strong: #4b3d5d;
+  --shadow-sm: 0 2px 10px rgba(6, 4, 10, .25);
+  --shadow: 0 16px 42px rgba(5, 3, 9, .32);
+  --shadow-lg: 0 30px 80px rgba(3, 2, 6, .55);
+  --danger: #ef9a92;
+  --danger-soft: #41252a;
+  --success: #8bc9a9;
+  --success-soft: #223a30;
+  --warning: #dfba72;
+  --warning-soft: #3c3221;
+  --header-bg: rgba(23, 19, 30, .88);
+  --hero-wash: radial-gradient(ellipse at 15% 0%, rgba(148, 118, 194, .18), transparent 55%),
+               radial-gradient(ellipse at 90% 10%, rgba(111, 82, 168, .12), transparent 50%);
+  --grid-line: rgba(201, 184, 224, .06);
+  --focus-ring: 0 0 0 4px rgba(185, 160, 230, .2);
+  --selection: #49385f;
+}
+
+/* ---------- 蓝色 · 夜间 ---------- */
+html[data-theme="blue"][data-mode="dark"] {
+  color-scheme: dark;
+  --primary: #8fc5ee;
+  --primary-strong: #b6dcf8;
+  --primary-deep: #d0eafa;
+  --primary-soft: #20374b;
+  --primary-faint: #192c3e;
+  --on-primary: #10212e;
+  --accent: #69a1cd;
+  --accent-soft: #2b455d;
+  --bg: #0f1720;
+  --bg-deep: #0b121a;
+  --surface: #162330;
+  --surface-2: #1d2d3e;
+  --surface-3: #26394c;
+  --text: #e3ecf3;
+  --text-soft: #c6d4df;
+  --muted: #9cafc0;
+  --muted-2: #7c8f9f;
+  --border: #2c4053;
+  --border-strong: #3a536a;
+  --shadow-sm: 0 2px 10px rgba(3, 8, 13, .28);
+  --shadow: 0 16px 42px rgba(3, 8, 13, .35);
+  --shadow-lg: 0 30px 80px rgba(2, 6, 10, .58);
+  --danger: #ec9b95;
+  --danger-soft: #3d2528;
+  --success: #86c4a7;
+  --success-soft: #20382e;
+  --warning: #d9b56f;
+  --warning-soft: #392f1f;
+  --header-bg: rgba(15, 23, 32, .9);
+  --hero-wash: radial-gradient(ellipse at 15% 0%, rgba(105, 161, 205, .17), transparent 55%),
+               radial-gradient(ellipse at 90% 10%, rgba(47, 109, 168, .13), transparent 50%);
+  --grid-line: rgba(179, 210, 232, .06);
+  --focus-ring: 0 0 0 4px rgba(143, 197, 238, .2);
+  --selection: #29475e;
+}
+
+/* 兼容不支持 color-mix 的旧浏览器：主题控件与遮罩使用回退色 */
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  html[data-theme="purple"] { --header-bg: rgba(250, 247, 253, .97); }
+  html[data-theme="blue"] { --header-bg: rgba(247, 251, 254, .97); }
+  html[data-theme="purple"][data-mode="dark"] { --header-bg: rgba(23, 19, 30, .97); }
+  html[data-theme="blue"][data-mode="dark"] { --header-bg: rgba(15, 23, 32, .97); }
+}
